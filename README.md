@@ -33,10 +33,13 @@ Each folder has a `README.md` with instructions for running the examples.
 
 ## Language Basics
 
+### Evaluate with `nix-instantiate --eval`
 - Some expressions (`*.nix` files) will be fully evaluated when running with `nix-instantiate --eval`.
   - This results in output like `[ <CODE> <CODE> <CODE> ]` when `[ 1 2 3 ]` is expected.
   - To suppress this behavior, run `nix-instantiate --eval` commands with the `--strict` flag
-- `let ... in ...` expressions (i.e. `let expression` or `let binding`) assign names and values for repeated use
+
+### `let ... in ...` expressions
+- `let expression`s/`let binding`s assign names and values for repeated use
   - Example:
     ```
     let
@@ -56,6 +59,8 @@ Each folder has a `README.md` with instructions for running the examples.
 
     ## Evaluates to 3
     ```
+
+### Attribute sets
 - [Attribute sets](https://nixos.org/manual/nix/stable/language/values.html#attribute-set) are variables that can be accessed with dot.notation
   - Example:
     ```
@@ -76,8 +81,8 @@ Each folder has a `README.md` with instructions for running the examples.
       ```
       { a.b.c = 1; }
       ```
-- `with` statements
-  - Allow access to attributes without repeatedly referencing their attribute set
+### `with` statements
+- Allow access to attributes without repeatedly referencing their attribute set
   - Example:
     ```
     let
@@ -90,6 +95,169 @@ Each folder has a `README.md` with instructions for running the examples.
     with a; [x y z]
     ```
   - The expression `with a; [ x y z ]` is equivalent to `[ a.x a.y a.z ]`
+
+### `inherit` statements
+- Assigns the value of a name from an existing scope to the same name in a nested scope.
+  - This helps avoid repeating the same value name multiple times
+  - Example:
+    ```
+    let
+      x = 1;
+      y = 2;
+      in
+      {
+        ## Equivalent to x = x; y = y;
+        inherit x y;
+      }
+    ```
+  - You can also inherit from specific attribute sets with (parentheses)
+    - Example:
+      ```
+      let
+        a = { x = 1; y = 2; };
+      in
+      {
+        ## Equivalent to x = a.x; y = a.y;
+        inherit (a) x y;
+      }
+      ```
+  - The `inherit` keyword also work in `let` expressions
+    - This is useful for defining more complex inheritance. The example below is simple and doesn't fully demonstrate the usefulness of this style of inheritance. If/when I get to a more relevant real-world example, I will update this example
+    - Example:
+      ```
+      let
+        x = { x = 1; y = 2; }.x;
+        y = { y = 1; y = 2; }.y;
+      in
+        ...
+      ```
+
+### String interpolation
+- Like Bash, Nix does string interpolation with `${ ... }`
+- The value of a Nix expression can be inserted into a string with this syntax
+- Example:
+  ```
+  let
+    name = "Nix";
+  in
+  "hello ${name}"
+  ```
+- **NOTE**: Only character strings & values that can be represented as a string are allowed
+  - Example of invalid string interpolation:
+    ```
+    let
+      x = 1;
+    in
+    "${x} + ${x} + ${x + x}
+    ```
+
+    Produces an error "cannot coerce an integer to a string"
+
+### Filesystem paths
+- Nix handles relative & absolute paths similar to a Bash shell
+- Absolute paths start with a `/`
+- Paths that start with `./` or no `/` are relative to the shell's `$CWD`
+
+### Lookup paths ("angle bracket syntax")
+- **NOTE**: Nix's documentation recommends against using lookup paths in production code, as they are "[impurities](https://nix.dev/tutorials/nix-language#impurities)" which are not reproducible.
+- [Lookup path Reference](https://nixos.org/manual/nix/unstable/language/constructs/lookup-path)
+- Lookup paths depend on the value of [`builtins.nixPath`](https://nixos.org/manual/nix/stable/language/builtin-constants#builtins-nixPath)
+- Lookup paths are denoted with `<angle/brackets>`
+- Example:
+  ```
+  ## /nix/var/nix/profiles/pre-user/root/channels/nixpkgs
+  <nixpkgs>
+  ```
+
+  ```
+  ## /nix/var/nix/profiles/pre-user/root/channels/nixpkgs/lib
+  <nixpkgs/lib>
+  ```
+
+### Multiline/indented strings 
+- For long strings that cover multiple lines, use multiline strings, denoted by `''double single quotes''`
+- Example:
+  ```
+  ''
+  multi
+  line
+  string
+  ''
+  ```
+
+  ```
+  ''
+  one
+    two
+      three
+  ''
+  ```
+
+### Functions
+- Functions always take exactly 1 argument.
+- Argument & function bodies are separated with a `:` colon
+  - On the left is the function argument
+  - On the right is the function body
+- Functions are the 3rd way to assign names to values (besides [`attribute sets`](#attribute-sets) and [`let expressions`](#let--in--expressions))
+  - Unlike attribute sets & let expressions, function values are not known in advance.
+  - Like in other programming languages, function variables ("names" in Nix) are placeholders that will be filled by the function's input/operations
+- Functions can be declared a number of ways:
+  - Single argument
+    ```
+    x: x + 1
+    ```
+    - Multiple arguments via nesting
+      ```
+      x: y: x + y
+      ```
+  - Attribute set argument
+    ```
+    { a, b }: a + b
+    ``` 
+    - With default attributes
+      ```
+      { a, b ? 0 }: a + b
+      ``` 
+    - With additional attributes
+      ```
+      { a, b, ... }: a + b
+      ```
+  - Named attribute set argument
+    ```
+    args@{ a, b, ... }: a + b + args.c
+    ```
+
+    OR
+
+    ```
+    { a, b, ... }@args: a + b + args.c
+    ```
+- Functions do not have a name; they are "anonymous," or "lambda" functions
+  - Example:
+    ```
+    let
+      f = x: x + 1;
+    in f
+    ```
+- Calling a function is similar to Bash, where you simple write the function's name and pass a value
+  - Example:
+    ```
+    let
+      f = x: x + 1;
+    in f 1
+    ```
+
+    ```
+    let
+      f = x: x.a;
+    in
+    f { a = 1; }
+    ```
+- If a function is not declared with a name in a `let` statement, it can be instantiated & called by surrounding the function logic in parentheses
+  - Example:
+    ```
+    (x: x + 1) 1
+    ```
 
 ## Links
 
