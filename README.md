@@ -2,6 +2,10 @@
 
 My reference repo as I learn [`nix`](https://nixos.org).
 
+Example `.nix` files are in the [`nix.dev-examples/`](./nix.dev-examples/) directory. These example files were created following the [`nix.dev tutorial site`](https://nix.dev/tutorials/first-steps/).
+
+Each folder has a `README.md` with instructions for running the examples.
+
 ## Notes
 
 ### Nix repl
